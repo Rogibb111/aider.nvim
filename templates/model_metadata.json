@@ -1,0 +1,10 @@
+{
+  "openai/free-aider-agent": {
+    "max_tokens": 8192,
+    "max_input_tokens": 131072,
+    "max_output_tokens": 8192,
+    "input_cost_per_token": 0.0,
+    "output_cost_per_token": 0.0,
+    "mode": "chat"
+  }
+}

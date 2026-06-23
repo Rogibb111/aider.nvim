@@ -1,0 +1,4 @@
+- name: openai/free-aider-agent
+  edit_format: diff
+  use_repo_map: true
+
