@@ -34,7 +34,12 @@ local function check_port_open(port, host, timeout_ms, callback)
   timer:start(0, 0, check_connect)
 end
 
-function M.ensure_started(router_config, callback)
+function M.ensure_started(router_config, litellm_path, callback)
+  if type(litellm_path) == "function" then
+    callback = litellm_path
+    litellm_path = nil
+  end
+
   if not router_config or not router_config.enabled then
     callback()
     return
@@ -69,7 +74,7 @@ function M.ensure_started(router_config, callback)
 
   -- 2. Spawn the process
   local cmd = {
-    "litellm",
+    litellm_path or "litellm",
     "--config",
     config_path,
     "--port",
