@@ -48,35 +48,6 @@ function M.stop(id, final_text, level)
 		end
 		notif_ids = {}
 	end
-	vim.defer_fn(function()
-		if type(id) == "string" then
-			-- Called with id parameter
-			if timers[id] then
-				timers[id]:stop()
-				timers[id]:close()
-				timers[id] = nil
-			end
-			if notif_ids[id] then
-				local msg = final_text or ""
-				local lvl = level or vim.log.levels.INFO
-				vim.notify(msg, lvl, { replace = notif_ids[id] })
-				notif_ids[id] = nil
-			end
-		else
-			-- Called with (final_text, level) for backward compatibility
-			for k, _ in pairs(timers) do
-				timers[k]:stop()
-				timers[k]:close()
-			end
-			timers = {}
-			for k, _ in pairs(notif_ids) do
-				local msg = id or ""
-				local lvl = final_text or vim.log.levels.INFO
-				vim.notify(msg, lvl, { replace = notif_ids[k] })
-			end
-			notif_ids = {}
-		end
-	end, 100)
 end
 
 return M
