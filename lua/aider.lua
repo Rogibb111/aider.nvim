@@ -62,22 +62,53 @@ function M.AiderOpen(args, window_type)
     helpers.open_buffer_in_new_window(window_type, M.aider_buf)
   else
     log("No existing aider buffer, creating new one")
-    local command = "aider " .. (args or "")
-    log("Opening window with type: " .. window_type)
-    helpers.open_window(window_type)
-    log("Adding buffers to command")
-    command = helpers.add_buffers_to_command(command, is_valid_buffer)
-    log("Final command: " .. command)
-    log("Opening terminal with command")
-    M.aider_buf = vim.api.nvim_get_current_buf()
-    M.aider_job_id = vim.fn.termopen(command, { on_exit = OnExit })
-    log("Terminal opened with job ID: " .. M.aider_job_id)
-    log("Set aider_buf to: " .. M.aider_buf)
-    vim.bo[M.aider_buf].bufhidden = "hide"
-    vim.bo[M.aider_buf].filetype = "AiderConsole"
+    
+    local function spawn_aider()
+      local command = "aider "
+      if M.config.free_tier_router and M.config.free_tier_router.enabled then
+        if not (args and args:match("%-%-model")) then
+          command = command .. "--model free-aider-agent "
+        end
+      end
+      command = command .. (args or "")
+      log("Opening window with type: " .. window_type)
+      helpers.open_window(window_type)
+      log("Adding buffers to command")
+      command = helpers.add_buffers_to_command(command, is_valid_buffer)
+      log("Final command: " .. command)
+      log("Opening terminal with command")
+      M.aider_buf = vim.api.nvim_get_current_buf()
+      
+      local term_opts = { on_exit = OnExit }
+      local old_api_base, old_api_key
+      if M.config.free_tier_router and M.config.free_tier_router.enabled then
+        old_api_base = vim.env.OPENAI_API_BASE
+        old_api_key = vim.env.OPENAI_API_KEY
+        vim.env.OPENAI_API_BASE = "http://127.0.0.1:8080/v1"
+        vim.env.OPENAI_API_KEY = "sk-mock-key"
+      end
+      
+      M.aider_job_id = vim.fn.termopen(command, term_opts)
+      
+      if M.config.free_tier_router and M.config.free_tier_router.enabled then
+        vim.env.OPENAI_API_BASE = old_api_base
+        vim.env.OPENAI_API_KEY = old_api_key
+      end
+      
+      log("Terminal opened with job ID: " .. M.aider_job_id)
+      log("Set aider_buf to: " .. M.aider_buf)
+      vim.bo[M.aider_buf].bufhidden = "hide"
+      vim.bo[M.aider_buf].filetype = "AiderConsole"
+      log("AiderOpen completed")
+      log("Final aider_buf: " .. (M.aider_buf or "nil"))
+    end
+
+    if M.config.free_tier_router and M.config.free_tier_router.enabled then
+      require("litellm_manager").ensure_started(M.config.free_tier_router, spawn_aider)
+    else
+      spawn_aider()
+    end
   end
-  log("AiderOpen completed")
-  log("Final aider_buf: " .. (M.aider_buf or "nil"))
 end
 
 function M.AiderOnBufferOpen(bufnr)
@@ -154,6 +185,10 @@ function M.setup(config)
     debug = false,
     ignore_buffers = {'^term://', 'NeogitConsole', 'NvimTree_', 'neo-tree filesystem'},
     border = nil,
+    free_tier_router = {
+      enabled = false,
+      providers = {},
+    },
   }
   M.config = vim.tbl_deep_extend('force', M.config, config or {})
 

@@ -4,6 +4,7 @@
 2. |setup|
 3. |keybindings|
 4. |functions|
+5. |free_tier_router|
 
 ==============================================================================
 *introduction*
@@ -20,6 +21,12 @@ The plugin provides a `setup` function that you can use to configure the plugin.
 - `auto_manage_context`: A boolean value that determines whether the plugin should automatically manage the context. If set to `true`, the plugin will automatically add and remove buffers from the context as they are opened and closed. Defaults to `true`.
 - `default_bindings`: A boolean value that determines whether the plugin should use the default keybindings. If set to `true`, the plugin will require the keybindings file and set the default keybindings. Defaults to `true`.
 - `ignore_buffers`: A list of matching patterns for buffer names that will be ignored. Defaults to `{'^term:', 'NeogitConsole', 'NvimTree_', 'neo-tree filesystem'}`.
+- `free_tier_router`: A table configuring LiteLLM as a background proxy sidecar router.
+  - `enabled`: A boolean value to enable or disable the router. Defaults to `false`.
+  - `providers`: A list of provider tables, each containing:
+    - `model`: The model string recognized by LiteLLM (e.g. `gemini/gemini-1.5-flash`).
+    - `api_key`: The API key for that model.
+    - `rpm`: (Optional) Requests-per-minute limit.
 
 Here is an example of how to use the `setup` function:
 
@@ -29,6 +36,13 @@ require('aider').setup({
   default_bindings = false,
   debug = false,
   ignore_buffers = {},
+  free_tier_router = {
+    enabled = true,
+    providers = {
+      { model = "gemini/gemini-1.5-flash", api_key = "AIzaSy...", rpm = 15 },
+      { model = "mistral/mistral-large-latest", api_key = "mistral_api_key...", rpm = 5 },
+    }
+  }
 })
 ```
 
@@ -64,5 +78,26 @@ Here are some examples of how to use the `AiderOpen` function:
 ```
 
 NOTE: if an Aider job is already running calling AiderOpen will reattach to it, even if it is called with different flags
+
+==============================================================================
+*free_tier_router*
+
+This is a small nice-to-have feature that attempts to give you a subscription level AI 
+experience for free by aggregating multiple free tier AI subscriptions together in a 
+seamless fashion so the user experiences minimal rate limiting.
+
+When the `free_tier_router` option is enabled, the plugin dynamically generates a
+LiteLLM YAML configuration and launches a LiteLLM proxy server daemon in the background
+bound to `127.0.0.1:8080`.
+
+LiteLLM routes all incoming requests to a single virtual model alias named
+`free-aider-agent` across the configured provider keys. If one provider encounters a
+429 (rate-limit) or other retryable error, it automatically falls back and rotates to
+the next available provider.
+
+Aider is spawned with environment variables pointing `OPENAI_API_BASE` and
+`OPENAI_API_KEY` to the background LiteLLM proxy, and with `--model free-aider-agent`.
+
+The LiteLLM sidecar daemon is cleanly shut down when Neovim exits.
 
 

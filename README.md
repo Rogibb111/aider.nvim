@@ -90,6 +90,12 @@ The Aider Plugin for Neovim provides a `setup` function that you can use to conf
 - `debug`: A boolean value that determines whether the plugin should enable debug logging. When set to true, it will print debug information to help troubleshoot issues. Defaults to false.
 - `ignore_buffers`: A list of matching patterns for buffer names that will be ignored. Defaults to `{'^term:', 'NeogitConsole', 'NvimTree_', 'neo-tree filesystem'}`.
 - `border`: A table for styling the floating window border. Expected to contain two keys: `style`, a string or a table, and `color`, a string. See [Neovim API documentation](https://neovim.io/doc/user/api.html#nvim_open_win()) for more information on floating window border styling. Defaults to no border. If `border.style` is not defined, `border.color` has no effect.
+- `free_tier_router`: A table configuring LiteLLM as a background proxy sidecar router to load-balance and automatically rotate API keys with failover mechanisms.
+  - `enabled`: A boolean value to enable or disable the router. Defaults to `false`.
+  - `providers`: A list of provider tables, each containing:
+    - `model`: The model string recognized by LiteLLM (e.g. `gemini/gemini-1.5-flash`, `mistral/mistral-large-latest`).
+    - `api_key`: The API key for that model.
+    - `rpm`: (Optional) Requests-per-minute limit for rate limiting and weighted shuffling.
 
 Here is an example of how to use the `setup` function:
 
@@ -103,6 +109,14 @@ require('aider').setup({
   border = {
     style = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" }, -- or e.g. "rounded"
     color = "#fab387",
+  },
+  free_tier_router = {
+    enabled = true,
+    providers = {
+      { model = "gemini/gemini-1.5-flash", api_key = "AIzaSy...", rpm = 15 },
+      { model = "mistral/mistral-large-latest", api_key = "mistral_api_key...", rpm = 5 },
+      { model = "openrouter/google/gemini-2.5-flash", api_key = "sk-or-v1-..." },
+    }
   },
 
   -- only necessary if you want to change the default keybindings. <Leader>C is not a particularly good choice. It's just shown as an example.
