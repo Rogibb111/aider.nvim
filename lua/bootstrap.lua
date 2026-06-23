@@ -72,7 +72,7 @@ function M.ensure_dependencies()
 				vim.log.levels.INFO
 			)
 			cmd = string.format(
-				"mise install python@%s && mise exec python@%s -- python -m venv %s && %s install litellm",
+				'mise install python@%s && mise exec python@%s -- python -m venv %s && %s install "litellm[proxy]"',
 				target_python_version,
 				target_python_version,
 				shell_escape(venv_dir),
@@ -84,7 +84,7 @@ function M.ensure_dependencies()
 				vim.log.levels.INFO
 			)
 			cmd = string.format(
-				"(asdf plugin add python || true) && asdf install python %s && ASDF_PYTHON_VERSION=%s asdf exec python -m venv %s && %s install litellm",
+				'(asdf plugin add python || true) && asdf install python %s && ASDF_PYTHON_VERSION=%s asdf exec python -m venv %s && %s install "litellm[proxy]"',
 				target_python_version,
 				target_python_version,
 				shell_escape(venv_dir),
@@ -96,7 +96,7 @@ function M.ensure_dependencies()
 				vim.log.levels.INFO
 			)
 			cmd = string.format(
-				"pyenv install %s -s && PYENV_VERSION=%s pyenv exec python -m venv %s && %s install litellm",
+				'pyenv install %s -s && PYENV_VERSION=%s pyenv exec python -m venv %s && %s install "litellm[proxy]"',
 				target_python_version,
 				target_python_version,
 				shell_escape(venv_dir),
@@ -110,7 +110,7 @@ function M.ensure_dependencies()
 		end
 	else
 		cmd = string.format(
-			"%s -m venv %s && %s install litellm",
+			'%s -m venv %s && %s install "litellm[proxy]"',
 			shell_escape(host_python),
 			shell_escape(venv_dir),
 			shell_escape(pip_bin)
