@@ -1,5 +1,3 @@
-> ⚠️ **No longer maintained.** This project is archived and I'm no longer developing it or accepting issues/PRs. Feel free to fork.
-
 # Aider Plugin for Neovim
 
 This is a simple plugin for Neovim that allows you to open a terminal window inside Neovim and run [Aider](https://github.com/paul-gauthier/aider). I wrote it as an experiment in using Aider which is by far the best AI coding assistant I've seen, and now just a few keystrokes away in vim.
