@@ -4,6 +4,28 @@ local M = {}
 M.aider_buf = nil
 M.debug = false
 
+-- ----------------------------------------------------------------------
+-- Dynamically locate and verify the model metadata template path
+-- packed inside the plugin installation directory.
+-- ----------------------------------------------------------------------
+local function get_metadata_filepath()
+	-- 1. Try to find the root directory of your plugin
+	-- 'aider' refers to the name of your plugin runtime directory
+	local plugin_path = vim.api.nvim_get_runtime_file("lua/aider.lua", false)
+
+	if #plugin_path > 0 then
+		-- Strip out 'lua/aider.lua' to get the root directory of the plugin
+		local root_dir = plugin_path[1]:gsub("lua/aider%.lua$", "")
+		local metadata_file = root_dir .. "templates/model_metadata.json"
+
+		-- 2. Verify the template file actually exists before attempting to use it
+		if vim.fn.filereadable(metadata_file) == 1 then
+			return metadata_file
+		end
+	end
+	return nil
+end
+
 local function is_valid_buffer(bufnr)
 	local bufname = vim.api.nvim_buf_get_name(bufnr)
 	local buftype = vim.api.nvim_buf_get_option(bufnr, "buftype")
@@ -36,20 +58,29 @@ local function log(message)
 	end
 end
 
-local function OnExit(job_id, exit_code, event_type)
+local function OnExit(job_id, exit_code)
 	vim.schedule(function()
-		if M.aider_buf and vim.api.nvim_buf_is_valid(M.aider_buf) then
-			vim.api.nvim_buf_set_option(M.aider_buf, "modifiable", true)
-			local message
-			if exit_code == 0 then
-				message = "Aider process completed successfully."
-			else
-				message = "Aider process exited with code: " .. exit_code
-			end
-			vim.api.nvim_buf_set_lines(M.aider_buf, -1, -1, false, { "", message })
-			vim.api.nvim_buf_set_option(M.aider_buf, "modifiable", false)
+		-- 1. Notify the user of the status
+		if exit_code == 0 then
+			vim.notify("Aider session closed successfully.", vim.log.levels.INFO)
+		else
+			vim.notify("Aider process exited with code: " .. exit_code, vim.log.levels.WARN)
 		end
-		log("Aider process exited with code: " .. exit_code)
+
+		-- 2. Force close the associated terminal window if it exists and is open
+		if M.aider_win and vim.api.nvim_win_is_valid(M.aider_win) then
+			vim.api.nvim_win_close(M.aider_win, true)
+		end
+
+		-- 3. Force wipe the buffer so it doesn't hang around as [Process Exited]
+		if M.aider_buf and vim.api.nvim_buf_is_valid(M.aider_buf) then
+			vim.api.nvim_buf_delete(M.aider_buf, { force = true })
+		end
+
+		-- 4. Reset tracking states
+		M.aider_buf = nil
+		M.aider_win = nil
+		M.aider_job_id = nil
 	end)
 end
 
@@ -79,6 +110,18 @@ function M.AiderOpen(args, window_type)
 				if not (args and args:match("%-%-model")) then
 					command = command .. "--model free-aider-agent "
 				end
+
+				-- Enforce the efficient SEARCH/REPLACE diff format natively
+				-- to optimize token usage across your free-tier pool.
+				if not (args and args:match("%-%-edit%-format")) then
+					command = command .. "--edit-format diff "
+				end
+
+				-- Automatically attach your plugin-embedded model definitions
+				local metadata_path = get_metadata_filepath()
+				if metadata_path then
+					command = command .. string.format('--model-metadata-file "%s" ', metadata_path)
+				end
 			end
 			command = command .. (args or "")
 			log("Opening window with type: " .. window_type)
@@ -100,29 +143,7 @@ function M.AiderOpen(args, window_type)
 
 			-- Capture the window that will host the terminal so we can close it later
 			M.aider_win = vim.api.nvim_get_current_win()
-			-- Capture the window that will host the terminal so we can close it later
-			M.aider_win = vim.api.nvim_get_current_win()
 			M.aider_job_id = vim.fn.termopen(command, term_opts)
-
-			-- Set a terminal-mode mapping for <CR> to handle custom commands like /quit
-			-- This replaces the default <CR> behaviour with our own handler.
-			vim.api.nvim_buf_set_keymap(
-				M.aider_buf,
-				't',
-				'<CR>',
-				[[<Cmd>lua require('aider').handle_terminal_enter()<CR>]],
-				{ noremap = true, silent = true }
-			)
-
-			-- Set a terminal-mode mapping for <CR> to handle custom commands like /quit
-			-- This replaces the default <CR> behaviour with our own handler.
-			vim.api.nvim_buf_set_keymap(
-				M.aider_buf,
-				't',
-				'<CR>',
-				[[<Cmd>lua require('aider').handle_terminal_enter()<CR>]],
-				{ noremap = true, silent = true }
-			)
 
 			if M.config.free_tier_router and M.config.free_tier_router.enabled then
 				vim.env.OPENAI_API_BASE = old_api_base
@@ -269,45 +290,6 @@ function M.setup(config)
 	})
 
 	log("Aider setup completed with debug mode: " .. tostring(M.debug))
-end
-
--- ----------------------------------------------------------------------
--- Handle <CR> in the Aider terminal buffer.
--- If the user typed "/quit", close the terminal window and buffer,
--- stop the associated job, and notify the user.
--- Otherwise forward the line to the Aider process.
--- ----------------------------------------------------------------------
-function M.handle_terminal_enter()
-	-- Get the current line the user typed
-	local row = vim.api.nvim_win_get_cursor(0)[1]
-	local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or ""
-
-	-- Trim surrounding whitespace
-	line = line:gsub("^%s+", ""):gsub("%s+$", "")
-
-	if line:match("^/quit") then
-		-- Close the terminal window and buffer
-		if M.aider_win and vim.api.nvim_win_is_valid(M.aider_win) then
-			vim.api.nvim_win_close(M.aider_win, true)
-		end
-		if M.aider_buf and vim.api.nvim_buf_is_valid(M.aider_buf) then
-			vim.api.nvim_buf_delete(M.aider_buf, { force = true })
-		end
-		-- Stop the background job if it is still running
-		if M.aider_job_id then
-			vim.fn.jobstop(M.aider_job_id)
-		end
-		-- Reset module state
-		M.aider_buf = nil
-		M.aider_win = nil
-		M.aider_job_id = nil
-		vim.notify("Aider session closed via /quit", vim.log.levels.INFO)
-	else
-		-- Forward the line to the Aider process
-		if M.aider_job_id then
-			vim.fn.chansend(M.aider_job_id, line .. "\n")
-		end
-	end
 end
 
 return M
