@@ -1,4 +1,5 @@
 local helpers = require("helpers")
+local spinner = require("spinner")
 local M = {}
 
 M.aider_buf = nil
@@ -262,6 +263,8 @@ function M.setup(config)
 			end,
 		})
 	end
+
+	spinner.start("Aider.nvim loading...", { title = "Aider" })
 
 	create_commands()
 

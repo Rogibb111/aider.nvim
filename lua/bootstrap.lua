@@ -1,4 +1,5 @@
 local M = {}
+local spinner = require("spinner")
 
 -- Detect the OS platform
 local is_windows = vim.loop.os_uname().sysname:find("Windows") ~= nil
@@ -136,13 +137,14 @@ function M.ensure_dependencies()
 		on_stderr = append_output,
 		on_exit = function(_, exit_code)
 			if exit_code == 0 then
-				vim.notify("Aider.nvim: LiteLLM sidecar environment ready!", vim.log.levels.INFO)
+				-- We don't stop the spinner here because litellm_manager will stop it 
+				-- once the server is actually responding on the port.
 			else
 				local err_msg = "Aider.nvim: Failed to initialize cross-platform Python venv."
 				if #output > 0 then
 					err_msg = err_msg .. "\nConsole output:\n" .. table.concat(output, "\n")
 				end
-				vim.notify(err_msg, vim.log.levels.ERROR)
+				spinner.stop(err_msg, vim.log.levels.ERROR)
 			end
 		end,
 	})
