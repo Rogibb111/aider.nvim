@@ -264,7 +264,7 @@ function M.setup(config)
 		})
 	end
 
-	spinner.start("Aider.nvim loading...", { title = "Aider" })
+	spinner.start("Aider.nvim loading...", { title = "Aider", id = "aider_loading" })
 
 	create_commands()
 

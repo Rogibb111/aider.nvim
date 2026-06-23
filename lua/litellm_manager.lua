@@ -142,9 +142,9 @@ function M.ensure_started(router_config, litellm_path, callback)
 				if #process_logs > 0 then
 					error_msg = error_msg .. "\n\nRecent Output:\n" .. table.concat(process_logs, "\n")
 				end
-				spinner.stop(error_msg, vim.log.levels.WARN)
+				spinner.stop("aider_loading", error_msg, vim.log.levels.WARN)
 			else
-				spinner.stop("Aider.nvim ready", vim.log.levels.INFO)
+				spinner.stop("aider_loading", "Aider.nvim ready", vim.log.levels.INFO)
 			end
 			callback()
 		end)
