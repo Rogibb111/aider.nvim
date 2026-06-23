@@ -18,7 +18,7 @@ local function get_metadata_filepath()
 		-- Strip out 'lua/aider.lua' to get the root directory of the plugin
 		local root_dir = plugin_path[1]:gsub("lua/aider%.lua$", "")
 		local metadata_file = root_dir .. "templates/model_metadata.json"
-		local settings_file = root_dir .. "templates/.aider.model.settings.yml"
+		local settings_file = root_dir .. "templates/model.settings.yml"
 
 		-- 2. Verify the template files actually exist before attempting to use them
 		local metadata_exists = vim.fn.filereadable(metadata_file) == 1
