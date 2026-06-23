@@ -100,7 +100,19 @@ function M.AiderOpen(args, window_type)
 
 			-- Capture the window that will host the terminal so we can close it later
 			M.aider_win = vim.api.nvim_get_current_win()
+			-- Capture the window that will host the terminal so we can close it later
+			M.aider_win = vim.api.nvim_get_current_win()
 			M.aider_job_id = vim.fn.termopen(command, term_opts)
+
+			-- Set a terminal-mode mapping for <CR> to handle custom commands like /quit
+			-- This replaces the default <CR> behaviour with our own handler.
+			vim.api.nvim_buf_set_keymap(
+				M.aider_buf,
+				't',
+				'<CR>',
+				[[<Cmd>lua require('aider').handle_terminal_enter()<CR>]],
+				{ noremap = true, silent = true }
+			)
 
 			-- Set a terminal-mode mapping for <CR> to handle custom commands like /quit
 			-- This replaces the default <CR> behaviour with our own handler.
