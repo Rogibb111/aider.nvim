@@ -271,4 +271,43 @@ function M.setup(config)
 	log("Aider setup completed with debug mode: " .. tostring(M.debug))
 end
 
+-- ----------------------------------------------------------------------
+-- Handle <CR> in the Aider terminal buffer.
+-- If the user typed "/quit", close the terminal window and buffer,
+-- stop the associated job, and notify the user.
+-- Otherwise forward the line to the Aider process.
+-- ----------------------------------------------------------------------
+function M.handle_terminal_enter()
+	-- Get the current line the user typed
+	local row = vim.api.nvim_win_get_cursor(0)[1]
+	local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or ""
+
+	-- Trim surrounding whitespace
+	line = line:gsub("^%s+", ""):gsub("%s+$", "")
+
+	if line:match("^/quit") then
+		-- Close the terminal window and buffer
+		if M.aider_win and vim.api.nvim_win_is_valid(M.aider_win) then
+			vim.api.nvim_win_close(M.aider_win, true)
+		end
+		if M.aider_buf and vim.api.nvim_buf_is_valid(M.aider_buf) then
+			vim.api.nvim_buf_delete(M.aider_buf, { force = true })
+		end
+		-- Stop the background job if it is still running
+		if M.aider_job_id then
+			vim.fn.jobstop(M.aider_job_id)
+		end
+		-- Reset module state
+		M.aider_buf = nil
+		M.aider_win = nil
+		M.aider_job_id = nil
+		vim.notify("Aider session closed via /quit", vim.log.levels.INFO)
+	else
+		-- Forward the line to the Aider process
+		if M.aider_job_id then
+			vim.fn.chansend(M.aider_job_id, line .. "\n")
+		end
+	end
+end
+
 return M
